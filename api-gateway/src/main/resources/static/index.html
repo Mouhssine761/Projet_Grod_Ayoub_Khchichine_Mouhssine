@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PharmaLink - Gestion</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --secondary: #64748b;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --text-main: #1e293b;
+            --text-light: #64748b;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }
+
+        .top-bar {
+            background: var(--surface);
+            padding: 1rem 2rem;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 24px;
+            background: var(--primary);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 20px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 10px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            width: fit-content;
+        }
+
+        .tab-btn {
+            padding: 10px 25px;
+            border: none;
+            background: transparent;
+            color: var(--text-light);
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            background: #f8fafc;
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Products Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .product-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            border: 1px solid #e2e8f0;
+            transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .product-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .product-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 15px 0;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-stock {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-low {
+            background: #ffedd5;
+            color: #9a3412;
+        }
+
+        /* Orders History Styles */
+        .orders-container {
+            margin-top: 40px;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: var(--shadow);
+            border-left: 5px solid var(--secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .order-card.CONFIRMEE {
+            border-left-color: var(--primary);
+        }
+
+        .order-info h4 {
+            color: var(--text-main);
+            margin-bottom: 5px;
+        }
+
+        .order-meta {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .order-total {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-dark);
+        }
+
+        /* Forms */
+        .form-section {
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-main);
+            border: 1px solid #cbd5e1;
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: #ef4444;
+            padding: 5px 10px;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            background: var(--primary);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 10000;
+        }
+
+        .notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* ========================================= */
+        /*           LIVRAISON DASHBOARD STYLES      */
+        /* ========================================= */
+
+        .livraison-wrapper {
+            display: flex;
+            height: 700px;
+            /* Fixed height for the dashboard view */
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .l-sidebar {
+            width: 400px;
+            background-color: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+        }
+
+        .l-sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .l-sidebar-header h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-main);
+        }
+
+        .new-delivery-form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        /* Reusing common form styles slightly adjusted */
+        .new-delivery-form input,
+        .new-delivery-form select {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        .delivery-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .delivery-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+
+        .delivery-item:hover {
+            background-color: #f1f5f9;
+        }
+
+        .delivery-item.active {
+            background-color: #eff6ff;
+            border-left: 3px solid var(--primary);
+        }
+
+        .delivery-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+
+        .delivery-id {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-main);
+        }
+
+        .delivery-status {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            background-color: var(--border);
+            color: var(--text-light);
+        }
+
+        .status-EN_ATTENTE {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+
+        .status-EXPEDIEE {
+            background-color: #dbeafe;
+            color: #2563eb;
+        }
+
+        .status-LIVREE {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+
+        .delivery-address {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .delivery-meta {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .map-wrapper {
+            flex: 1;
+            background-color: #e5e7eb;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Responsive Livraison */
+        @media (max-width: 900px) {
+            .livraison-wrapper {
+                flex-direction: column-reverse;
+                height: auto;
+            }
+
+            .l-sidebar {
+                width: 100%;
+                height: 500px;
+            }
+
+            .map-wrapper {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="top-bar">
+        <div class="logo-area">
+            <div class="logo-icon">⚕️</div>
+            <h1>PharmaLink Manager</h1>
+        </div>
+        <div>
+            <span class="badge badge-stock">Gateway: 8080</span>
+            <span id="warehouse-info" style="font-size: 0.8rem; color: #666; margin-left: 10px;"></span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="openTab('produits')">📦 Catalogue</button>
+            <button class="tab-btn" onclick="openTab('commandes')">🛒 Gestion Commandes</button>
+            <button class="tab-btn" onclick="openTab('livraisons')">🚚 Expéditions</button>
+        </div>
+
+        <!-- TAB: PRODUITS -->
+        <div id="produits" class="tab-content active">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h2>Inventaire</h2>
+                <button class="btn btn-secondary" onclick="loadProduits()">🔄 Actualiser</button>
+            </div>
+            <div class="products-grid" id="products-list"></div>
+        </div>
+
+        <!-- TAB: COMMANDES -->
+        <div id="commandes" class="tab-content">
+            <div class="form-section">
+                <h2 style="margin-bottom: 20px;">Nouvelle Commande</h2>
+                <form onsubmit="createCommande(event)">
+                    <div class="form-group">
+                        <label>Client</label>
+                        <input type="text" id="clientNom" required placeholder="Nom du client">
+                    </div>
+                    <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <div id="order-lines"></div>
+                        <button type="button" class="btn btn-secondary" onclick="addOrderLine()"
+                            style="font-size: 0.9rem; margin-top: 10px;">+ Ajouter Produit</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span id="order-total" style="font-size: 1.2rem; font-weight: bold;">Total: 0.00 MAD</span>
+                        <button type="submit" class="btn btn-primary">Valider la Commande</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="orders-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3>Historique des Commandes</h3>
+                    <button class="btn btn-secondary" onclick="loadCommandes()">🔄 Actualiser</button>
+                </div>
+                <div id="orders-list">
+                    <p style="text-align: center; color: #999;">Chargement des commandes...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: LIVRAISONS (New Integration) -->
+        <div id="livraisons" class="tab-content">
+            <div class="livraison-wrapper">
+                <div class="l-sidebar">
+                    <div class="l-sidebar-header">
+                        <h2>Nouvelle Livraison</h2>
+                        <form id="create-livraison-form" class="new-delivery-form">
+                            <div class="form-group" style="margin-bottom:0.5rem">
+                                <input type="text" id="l-adresse" placeholder="Adresse (ex: 123 Rue Principale)"
+                                    required>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0.5rem">
+                                <input type="text" id="l-ville" placeholder="Ville (ex: Paris)" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0.5rem">
+                                <input type="text" id="l-codePostal" placeholder="Code Postal (ex: 75001)" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0.5rem">
+                                <input type="text" id="l-pays" placeholder="Pays (ex: France)" value="France" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0.5rem">
+                                <input type="text" id="l-transporteur" placeholder="Transporteur" value="DHL">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Créer Livraison</button>
+                        </form>
+                    </div>
+                    <div id="delivery-list" class="delivery-list">
+                        <!-- Items injected here -->
+                    </div>
+                </div>
+
+                <div class="map-wrapper">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+
+        // --- COMMON UTILS ---
+        function showNotif(msg) {
+            const n = document.getElementById('notification');
+            n.textContent = msg;
+            n.classList.add('show');
+            setTimeout(() => n.classList.remove('show'), 3000);
+        }
+
+        // --- TABS LOGIC ---
+        function openTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+            // Find the tab content and button to activate
+            document.getElementById(tabName).classList.add('active');
+
+            // Highlight correct button
+            const buttons = document.querySelectorAll('.tab-btn');
+            if (tabName === 'produits') buttons[0].classList.add('active');
+            if (tabName === 'commandes') buttons[1].classList.add('active');
+            if (tabName === 'livraisons') buttons[2].classList.add('active');
+
+            if (tabName === 'produits') loadProduits();
+            if (tabName === 'commandes') loadCommandes();
+            if (tabName === 'livraisons') initLivraisonModule();
+        }
+
+        // =========================================================
+        //                    PRODUITS LOGIC
+        // =========================================================
+        let produits = [];
+        async function loadProduits() {
+            try {
+                const res = await fetch(`${API_BASE}/produits`);
+                const data = await res.json();
+                produits = data._embedded ? data._embedded.produits : [];
+                const list = document.getElementById('products-list');
+                list.innerHTML = produits.map(p => `
+                    <div class="product-card">
+                        <h3>${p.nom}</h3>
+                        <p style="color: #666; font-size: 0.9rem;">${p.description}</p>
+                        <div class="product-price">${p.prix} MAD</div>
+                        <span class="badge ${p.quantiteStock > 0 ? 'badge-stock' : 'badge-low'}">Stock: ${p.quantiteStock}</span>
+                    </div>
+                `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // =========================================================
+        //                    COMMANDES LOGIC
+        // =========================================================
+        async function loadCommandes() {
+            const list = document.getElementById('orders-list');
+            list.innerHTML = '<p style="text-align: center; color: #666;">⏳ Chargement...</p>';
+
+            try {
+                const res = await fetch(`${API_BASE}/commandes`);
+                if (!res.ok) throw new Error(`Erreur HTTP: ${res.status}`);
+                const data = await res.json();
+
+                let commandes = [];
+                if (data._embedded && data._embedded.commandes) {
+                    commandes = data._embedded.commandes;
+                } else if (Array.isArray(data)) {
+                    commandes = data;
+                }
+
+                if (commandes.length === 0) {
+                    list.innerHTML = '<p style="text-align: center; color: #999;">Aucune commande trouvée.</p>';
+                    return;
+                }
+                commandes.reverse();
+
+                list.innerHTML = commandes.map(c => `
+            <div class="order-card ${c.statut}">
+                <div class="order-info">
+                    <h4>Commande #${c.id || 'Ref'} - ${c.clientNom || 'Client'}</h4>
+                    <div class="order-meta">
+                        📅 ${c.dateCommande ? new Date(c.dateCommande).toLocaleDateString() : 'Date inconnue'}
+                        | Statut: <strong>${c.statut}</strong>
+                    </div>
+                </div>
+                <div class="order-total">${c.montantTotal ? c.montantTotal.toFixed(2) : '0.00'} MAD</div>
+            </div>
+        `).join('');
+
+            } catch (e) {
+                list.innerHTML = `<p style="color: red; text-align: center;">⚠️ Erreur: Impossible de charger l'historique.</p>`;
+            }
+        }
+
+        let lineCount = 0;
+        function addOrderLine() {
+            lineCount++;
+            const div = document.createElement('div');
+            div.className = 'order-line';
+            div.id = `line-${lineCount}`;
+            div.style = "display: flex; gap: 10px; margin-bottom: 10px;";
+            div.innerHTML = `
+                <select class="produit-select" onchange="updateTotal()" style="flex: 1;">
+                    <option value="">Choisir produit...</option>
+                    ${produits.map(p => `<option value="${p.id}" data-prix="${p.prix}">${p.nom} (${p.quantiteStock})</option>`).join('')}
+                </select>
+                <input type="number" min="1" value="1" onchange="updateTotal()" style="width: 80px;">
+                <button type="button" class="btn btn-danger" onclick="this.parentElement.remove(); updateTotal()">×</button>
+            `;
+            document.getElementById('order-lines').appendChild(div);
+        }
+
+        function updateTotal() {
+            let total = 0;
+            document.querySelectorAll('.order-line').forEach(row => {
+                const select = row.querySelector('select');
+                const qty = row.querySelector('input').value;
+                const prix = select.selectedOptions[0]?.getAttribute('data-prix') || 0;
+                total += prix * qty;
+            });
+            document.getElementById('order-total').textContent = `Total: ${total.toFixed(2)} MAD`;
+        }
+
+        async function createCommande(e) {
+            e.preventDefault();
+            const lignes = [];
+            document.querySelectorAll('.order-line').forEach(row => {
+                const prodId = row.querySelector('select').value;
+                const qty = row.querySelector('input').value;
+                if (prodId) lignes.push({ produitId: prodId, quantite: parseInt(qty) });
+            });
+
+            try {
+                const res = await fetch(`${API_BASE}/commandes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientNom: document.getElementById('clientNom').value,
+                        clientEmail: "client@test.com",
+                        lignes: lignes
+                    })
+                });
+
+                if (res.ok) {
+                    showNotif("✅ Commande créée !");
+                    e.target.reset();
+                    document.getElementById('order-lines').innerHTML = '';
+                    updateTotal();
+                    loadCommandes();
+                    loadProduits();
+                } else {
+                    showNotif("❌ Erreur");
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        // =========================================================
+        //                    LIVRAISON LOGIC
+        // =========================================================
+
+        let map = null;
+        let warehouseMarker;
+        let deliveryMarker;
+        let routeLine;
+        let warehouseLocation = { lat: 0, lon: 0 };
+        let currentDeliveries = [];
+        let mapInitialized = false;
+
+        // Icons
+        const warehouseIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', shadowSize: [41, 41]
+        });
+
+        const deliveryIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', shadowSize: [41, 41]
+        });
+
+        function initLivraisonModule() {
+            if (mapInitialized) {
+                setTimeout(() => map.invalidateSize(), 200); // Fix rendering issues on tab switch
+                return;
+            }
+
+            // Init Map
+            map = L.map('map').setView([46.603354, 1.888334], 6); // France center by default
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            mapInitialized = true;
+            loadLivraisonConfig();
+            loadDeliveries();
+        }
+
+        async function loadLivraisonConfig() {
+            try {
+                const res = await fetch(`${API_BASE}/livraisons/config`); // Note: API Gateway route
+                const data = await res.json();
+                warehouseLocation = { lat: data.latitude, lon: data.longitude };
+
+                if (warehouseMarker) map.removeLayer(warehouseMarker);
+                warehouseMarker = L.marker([warehouseLocation.lat, warehouseLocation.lon], { icon: warehouseIcon })
+                    .addTo(map)
+                    .bindPopup("<b>Entrepôt Principal</b>")
+                    .openPopup();
+
+                map.setView([warehouseLocation.lat, warehouseLocation.lon], 10);
+                document.getElementById('warehouse-info').textContent = ` | Entrepôt: ${warehouseLocation.lat.toFixed(4)}, ${warehouseLocation.lon.toFixed(4)}`;
+            } catch (e) {
+                console.error("Failed to load config", e);
+                showNotif("⚠️ Erreur config entrepôt");
+            }
+        }
+
+        async function loadDeliveries() {
+            try {
+                const res = await fetch(`${API_BASE}/livraisons`);
+                const data = await res.json();
+                currentDeliveries = data;
+                renderDeliveryList(data);
+            } catch (e) {
+                console.error("Failed to load deliveries", e);
+            }
+        }
+
+        function renderDeliveryList(deliveries) {
+            const listEl = document.getElementById('delivery-list');
+            listEl.innerHTML = '';
+
+            deliveries.reverse().forEach(d => {
+                const el = document.createElement('div');
+                el.className = 'delivery-item';
+                el.innerHTML = `
+                <div class="delivery-header">
+                    <span class="delivery-id">#${d.commandeId || d.id}</span>
+                    <span class="delivery-status status-${d.statut}">${d.statut}</span>
+                </div>
+                <div class="delivery-address">${d.adresse}, ${d.ville}</div>
+                <div class="delivery-meta">
+                    <span>${d.distanceKm ? d.distanceKm.toFixed(1) + ' km' : 'Dist. inconnue'}</span>
+                    <span>${d.dateCreation ? new Date(d.dateCreation).toLocaleDateString() : ''}</span>
+                </div>
+            `;
+                el.onclick = () => selectDelivery(d, el);
+                listEl.appendChild(el);
+            });
+        }
+
+        function selectDelivery(delivery, element) {
+            document.querySelectorAll('.delivery-item').forEach(e => e.classList.remove('active'));
+            element.classList.add('active');
+
+            if (deliveryMarker) map.removeLayer(deliveryMarker);
+            if (routeLine) map.removeLayer(routeLine);
+
+            if (delivery.latitude && delivery.longitude) {
+                const dest = [delivery.latitude, delivery.longitude];
+
+                deliveryMarker = L.marker(dest, { icon: deliveryIcon })
+                    .addTo(map)
+                    .bindPopup(`
+                    <b>Livraison #${delivery.id}</b><br>
+                    ${delivery.adresse}<br>
+                    Distance: ${delivery.distanceKm?.toFixed(2)} km
+                `)
+                    .openPopup();
+
+                routeLine = L.polyline([
+                    [warehouseLocation.lat, warehouseLocation.lon],
+                    dest
+                ], { color: 'blue', weight: 4, opacity: 0.6, dashArray: '10, 10' }).addTo(map);
+
+                map.fitBounds([
+                    [warehouseLocation.lat, warehouseLocation.lon],
+                    dest
+                ], { padding: [50, 50] });
+            }
+        }
+
+        // New Delivery Form
+        document.getElementById('create-livraison-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitter = e.submitter;
+            const initialText = submitter.innerText;
+            submitter.innerText = "Création...";
+            submitter.disabled = true;
+
+            const payload = {
+                commandeId: Date.now(),
+                adresse: document.getElementById('l-adresse').value,
+                ville: document.getElementById('l-ville').value,
+                codePostal: document.getElementById('l-codePostal').value,
+                pays: document.getElementById('l-pays').value,
+                transporteur: document.getElementById('l-transporteur').value
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/livraisons`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    e.target.reset();
+                    showNotif("✅ Livraison créée avec succès");
+                    await loadDeliveries();
+                } else {
+                    showNotif("❌ Erreur création livraison");
+                }
+            } catch (err) {
+                console.error(err);
+                showNotif("❌ Erreur réseau");
+            } finally {
+                submitter.innerText = initialText;
+                submitter.disabled = false;
+            }
+        });
+
+        // Initial load
+        loadProduits();
+    </script>
+</body>
+
+</html>

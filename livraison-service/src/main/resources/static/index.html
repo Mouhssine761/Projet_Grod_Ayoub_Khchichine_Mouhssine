@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi des Livraisons</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #64748b;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 400px;
+            background-color: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 5;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .new-delivery-form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: var(--primary);
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.625rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .delivery-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .delivery-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+
+        .delivery-item:hover {
+            background-color: #f1f5f9;
+        }
+
+        .delivery-item.active {
+            background-color: #eff6ff;
+            border-left: 3px solid var(--primary);
+        }
+
+        .delivery-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+
+        .delivery-id {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-main);
+        }
+
+        .delivery-status {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            background-color: var(--border);
+            color: var(--text-muted);
+        }
+
+        .status-EN_ATTENTE { background-color: #fef3c7; color: #d97706; }
+        .status-EXPEDIEE { background-color: #dbeafe; color: #2563eb; }
+        .status-LIVREE { background-color: #dcfce7; color: #16a34a; }
+
+        .delivery-address {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .delivery-meta {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Map Styling */
+        .map-container {
+            flex: 1;
+            background-color: #e5e7eb;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Loading Overlay */
+        #loader {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column-reverse; /* Map on top on mobile? No, maybe bottom */
+            }
+            .sidebar {
+                width: 100%;
+                height: 50%;
+            }
+            .map-container {
+                height: 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+</div>
+
+<header>
+    <h1>📦 Livraison Service Dashboard</h1>
+    <div id="warehouse-info" style="font-size: 0.875rem; color: var(--text-muted);">
+        Chargement entrepôt...
+    </div>
+</header>
+
+<div class="container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Nouvelle Livraison</h2>
+            <form id="create-form" class="new-delivery-form">
+                <div class="form-group">
+                    <input type="text" id="adresse" placeholder="Adresse (ex: 123 Rue Principale)" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="ville" placeholder="Ville (ex: Paris)" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="codePostal" placeholder="Code Postal (ex: 75001)" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="pays" placeholder="Pays (ex: France)" value="France" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="transporteur" placeholder="Transporteur" value="DHL">
+                </div>
+                <button type="submit" class="btn">Créer Livraison</button>
+            </form>
+        </div>
+        <div id="delivery-list" class="delivery-list">
+            <!-- Items injected here -->
+        </div>
+    </div>
+    
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+    // State
+    let map;
+    let warehouseMarker;
+    let deliveryMarker;
+    let routeLine;
+    let warehouseLocation = { lat: 0, lon: 0 };
+    let currentDeliveries = [];
+
+    // Icons
+    const warehouseIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        shadowSize: [41, 41]
+    });
+
+    const deliveryIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        shadowSize: [41, 41]
+    });
+
+    // Initialization
+    window.addEventListener('load', async () => {
+        initMap();
+        await loadConfig();
+        loadDeliveries();
+    });
+
+    function initMap() {
+        // Default View
+        map = L.map('map').setView([46.603354, 1.888334], 6); // France center by default
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+    }
+
+    async function loadConfig() {
+        try {
+            const res = await fetch('/api/livraisons/config');
+            const data = await res.json();
+            warehouseLocation = { lat: data.latitude, lon: data.longitude };
+            
+            // Set warehouse marker
+            if (warehouseMarker) map.removeLayer(warehouseMarker);
+            warehouseMarker = L.marker([warehouseLocation.lat, warehouseLocation.lon], {icon: warehouseIcon})
+                .addTo(map)
+                .bindPopup("<b>Entrepôt Principal</b>")
+                .openPopup();
+            
+            map.setView([warehouseLocation.lat, warehouseLocation.lon], 10);
+            document.getElementById('warehouse-info').innerText = `Entrepôt: ${warehouseLocation.lat.toFixed(4)}, ${warehouseLocation.lon.toFixed(4)}`;
+        } catch (e) {
+            console.error("Failed to load config", e);
+            alert("Erreur de chargement de la configuration entrepôt");
+        }
+    }
+
+    async function loadDeliveries() {
+        document.getElementById('loader').style.display = 'flex';
+        try {
+            const res = await fetch('/api/livraisons');
+            const data = await res.json();
+            currentDeliveries = data;
+            renderList(data);
+        } catch (e) {
+            console.error("Failed to load deliveries", e);
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+
+    function renderList(deliveries) {
+        const listEl = document.getElementById('delivery-list');
+        listEl.innerHTML = '';
+
+        deliveries.reverse().forEach(d => {
+            const el = document.createElement('div');
+            el.className = 'delivery-item';
+            el.innerHTML = `
+                <div class="delivery-header">
+                    <span class="delivery-id">#${d.commandeId || d.id}</span>
+                    <span class="delivery-status status-${d.statut}">${d.statut}</span>
+                </div>
+                <div class="delivery-address">${d.adresse}, ${d.ville}</div>
+                <div class="delivery-meta">
+                    <span>${d.distanceKm ? d.distanceKm.toFixed(1) + ' km' : 'Distance inconnue'}</span>
+                    <span>${new Date(d.dateCreation).toLocaleDateString()}</span>
+                </div>
+            `;
+            el.onclick = () => selectDelivery(d, el);
+            listEl.appendChild(el);
+        });
+    }
+
+    function selectDelivery(delivery, element) {
+        // Highlight in list
+        document.querySelectorAll('.delivery-item').forEach(e => e.classList.remove('active'));
+        element.classList.add('active');
+
+        // Update map
+        if (deliveryMarker) map.removeLayer(deliveryMarker);
+        if (routeLine) map.removeLayer(routeLine);
+
+        if (delivery.latitude && delivery.longitude) {
+            const dest = [delivery.latitude, delivery.longitude];
+            
+            deliveryMarker = L.marker(dest, {icon: deliveryIcon})
+                .addTo(map)
+                .bindPopup(`
+                    <b>Livraison #${delivery.id}</b><br>
+                    ${delivery.adresse}<br>
+                    Distance: ${delivery.distanceKm?.toFixed(2)} km
+                `)
+                .openPopup();
+
+            // Draw line
+            routeLine = L.polyline([
+                [warehouseLocation.lat, warehouseLocation.lon],
+                dest
+            ], {color: 'blue', weight: 4, opacity: 0.6, dashArray: '10, 10'}).addTo(map);
+
+            // Fit bounds
+            map.fitBounds([
+                [warehouseLocation.lat, warehouseLocation.lon],
+                dest
+            ], {padding: [50, 50]});
+        } else {
+            alert("Cette livraison n'a pas de coordonnées valides.");
+        }
+    }
+
+    // Form Handling
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const startBtnText = e.submitter.innerText;
+        e.submitter.innerText = "Création...";
+        e.submitter.disabled = true;
+
+        const payload = {
+            commandeId: Date.now(), // Mock ID
+            adresse: document.getElementById('adresse').value,
+            ville: document.getElementById('ville').value,
+            codePostal: document.getElementById('codePostal').value,
+            pays: document.getElementById('pays').value,
+            transporteur: document.getElementById('transporteur').value
+        };
+
+        try {
+            const res = await fetch('/api/livraisons', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (res.ok) {
+                // Clear form
+                e.target.reset();
+                // Reload list
+                await loadDeliveries();
+            } else {
+                alert("Erreur lors de la création de la livraison");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Erreur réseau");
+        } finally {
+            e.submitter.innerText = startBtnText;
+            e.submitter.disabled = false;
+        }
+    });
+
+</script>
+</body>
+</html>
